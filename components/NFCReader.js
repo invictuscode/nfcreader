@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, Button, Platform } from 'react-native';
-import NfcManager, { NfcTech } from 'react-native-nfc-manager';
+import { View, Text, Button, Platform, Touchable, TouchableOpacity } from 'react-native';
+import NfcManager, { NfcTech, Ndef } from 'react-native-nfc-manager';
 
 export default function NFCReader() {
   const [hasNFC, setHasNFC] = useState(null);
   const [lastTagRead, setLastTagRead] = useState(null);
+  const [statusMessage, setStatusMessage] = useState(''); // New state for status message
 
   useEffect(() => {
     checkNFC();
@@ -19,13 +20,23 @@ export default function NFCReader() {
   };
 
   const handleReadNFC = async () => {
+    setStatusMessage('Bring the tag near...');
     try {
       await NfcManager.requestTechnology(NfcTech.Ndef);
       const tag = await NfcManager.getTag();
-      setLastTagRead(JSON.stringify(tag, null, 2));
+
+      if (tag && tag.ndefMessage) {
+        const ndefRecord = tag.ndefMessage[0];
+        const payload = ndefRecord.payload;
+        const text = Ndef.text.decodePayload(payload);
+        setLastTagRead(text);
+        setStatusMessage('Tag read successfully!');
+      } else {
+        setStatusMessage('No NDEF message found');
+      }
     } catch (error) {
       console.warn('Error reading NFC:', error);
-      setLastTagRead('Error reading NFC tag');
+      setStatusMessage('Failed to read the tag. Try again.');
     } finally {
       NfcManager.cancelTechnologyRequest();
     }
@@ -41,9 +52,12 @@ export default function NFCReader() {
 
   return (
     <View>
-      <Button title="Read NFC Tag" onPress={handleReadNFC} />
+      <TouchableOpacity onPress={handleReadNFC} >yo</TouchableOpacity>
+      {statusMessage && (
+        <Text style={{ marginTop: 10 }}>{statusMessage}</Text>
+      )}
       {lastTagRead && (
-        <View>
+        <View style={{ marginTop: 20 }}>
           <Text>Last Tag Read:</Text>
           <Text>{lastTagRead}</Text>
         </View>
